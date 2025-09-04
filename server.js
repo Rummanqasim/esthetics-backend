@@ -152,7 +152,10 @@ app.get("/api/transactions", authenticateToken, async (req, res) => {
     res.status(500).json({ error: "Failed to fetch transactions" });
   }
 });
-
+// Health check route
+app.get("/", (req, res) => {
+  res.send("Backend is working 🚀");
+});
 // Start server
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
