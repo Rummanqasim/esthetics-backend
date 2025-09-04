@@ -17,7 +17,7 @@ app.use(express.static("frontend"));
 // PostgreSQL connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }, // required for Supabase
+  ssl: { rejectUnauthorized: false }
 });
 
 // Helper function for queries
