@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Esthetics Auto Cashbook</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<style>
+  :root{
+    --brand:#0b3b6d;--brand-2:#1e6fd9;--bg:#f4f6f9;--card:#fff;--text:#1f2937;--muted:#6b7280;--danger:#dc3545;--shadow:0 6px 16px rgba(0,0,0,.08);--radius:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  header{background:linear-gradient(180deg,var(--brand),#062945);color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:5;box-shadow:var(--shadow)}
+  .title{font-weight:900;font-size:18px;display:flex;gap:10px;align-items:center}
+  nav button{background:transparent;border:none;color:#e5efff;font-weight:700;margin-left:12px;padding:8px 10px;border-radius:8px;cursor:pointer}
+  nav button.active,nav button:hover{background:rgba(255,255,255,.12);color:#fff}
+  .container{max-width:1200px;margin:0 auto;padding:18px}
+  .hidden{display:none}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:16px}
+  .card-title{font-weight:800;color:var(--brand);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .btn{padding:8px 12px;border:none;border-radius:10px;font-weight:700;cursor:pointer}
+  .btn-primary{background:var(--brand-2);color:#fff}
+  .btn-secondary{background:#64748b;color:#fff}
+  .btn-danger{background:var(--danger);color:#fff}
+  .btn-ghost{background:#eef2f7;color:#111}
+  .form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+  .form-group label{display:block;font-size:12px;font-weight:800;color:var(--muted);margin:4px 0;letter-spacing:.4px;text-transform:uppercase}
+  .form-group input,.form-group select{width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+  th,td{padding:10px;border-top:1px solid #eef2f7;text-align:left}
+  thead th{background:var(--brand);color:#fff;border-top:none}
+  .action-btn{background:transparent;border:none;padding:6px 8px;border-radius:8px;cursor:pointer}
+  .action-btn:hover{background:#eef6ff}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .chip{background:#f3f4f6;border-radius:999px;padding:4px 10px;font-size:12px;display:inline-flex;align-items:center;gap:8px}
+  .chip button{border:none;background:transparent;color:#ef4444;cursor:pointer}
+  footer{background:#0b3b6d;color:#fff;text-align:center;padding:10px}
+  .income {color: #16a34a; font-weight: 600;}
+  .expense {color: #dc2626; font-weight: 600;}
+  .negative-amount { color: #dc2626; font-weight: 600;}
+  .positive-amount { color: #16a34a; font-weight: 600;}
+  .today-positive-amount { color: #059669; font-weight: 600;}
+  .today-negative-amount { color: #b91c1c; font-weight: 600;}
+</style>
+</head>
+<body>
+<header>
+  <div class="title"><i class="fa-solid fa-car"></i> Esthetics Auto Cashbook</div>
+  <nav id="menu" class="hidden">
+    <button id="btnDashboard" onclick="showSection('dashboard')">Dashboard</button>
+    <button id="btnTransactions" onclick="showSection('transactions')" class="active">Transactions</button>
+    <button id="btnSettings" onclick="showSection('settings')">Settings</button>
+  </nav>
+</header>
+
+<div class="container">
+
+  <!-- LOGIN -->
+  <section id="loginScreen" class="card" style="max-width:480px;margin:40px auto;">
+    <div class="card-title"><i class="fa-solid fa-right-to-bracket"></i> Login</div>
+    <div class="form-row">
+      <div class="form-group"><label>Username</label><input id="loginUser" autocomplete="username" class="standard-field"></div>
+      <div class="form-group"><label>Password</label><input id="loginPass" type="password" autocomplete="current-password" class="standard-field"></div>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:8px;justify-content:space-between;align-items:center;">
+      <button class="btn btn-primary" onclick="login()">Login</button>
+      <span style="font-size:12px;color:#6b7280;">Welcome to Esthetics Auto Cashbook</span>
+    </div>
+  </section>
+
+  <!-- APP -->
+  <div id="app" class="hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div>Welcome, <b id="currentUser"></b></div>
+      <button class="btn btn-secondary" onclick="logout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Logout</button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <section id="dashboardSection" class="card hidden">
+      <div class="card-title"><i class="fa-solid fa-gauge-high"></i> Dashboard</div>
+      <div class="card-title" style="margin-top:8px;"><i class="fa-solid fa-calendar-day"></i> Today's Summary</div>
+      <div id="todaySummary" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;"></div>
+      <div class="card-title"><i class="fa-solid fa-chart-pie"></i> Total Summary</div>
+      <div id="dashboardSummary" style="display:flex;gap:12px;flex-wrap:wrap;"></div>
+      <hr>
+      <div class="card-title" style="margin-top:8px;"><i class="fa-solid fa-filter"></i> Filters & Export</div>
+      <div class="form-row">
+        <div class="form-group"><label>Start Date</label><input type="date" id="filterStart" class="standard-field"></div>
+        <div class="form-group"><label>End Date</label><input type="date" id="filterEnd" class="standard-field"></div>
+        <div class="form-group"><label>Category</label><select id="filterCategory" class="standard-field"></select></div>
+        <div class="form-group"><label>Account</label><select id="filterAccount" class="standard-field"></select></div>
+        <div class="form-group"><label>Type</label>
+          <select id="filterType" class="standard-field">
+            <option value="">All</option>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="btn btn-primary" onclick="applyFilters(true)"><i class="fa-solid fa-magnifying-glass"></i> Apply Filters</button>
+        <button class="btn btn-ghost" onclick="clearFilters()">Clear</button>
+        <button id="exportBtn" class="btn btn-secondary" onclick="exportExcel()"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+        <button id="exportPdfBtn" class="btn btn-danger" onclick="exportPDF()"><i class="fa-solid fa-file-pdf"></i> Export PDF</button>
+      </div>
+    </section>
+
+    <!-- TRANSACTIONS -->
+    <section id="transactionsSection" class="hidden">
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-plus"></i> Add Transaction</div>
+        <form id="transactionForm">
+          <div class="form-row">
+            <div class="form-group"><label>Date</label><input type="date" id="date" required class="standard-field"></div>
+            <div class="form-group"><label>Category</label><select id="category" required class="standard-field"></select></div>
+            <div class="form-group"><label>ID / Others</label><input type="text" id="transactionId" placeholder="Optional" class="standard-field"></div>
+            <div class="form-group"><label>Vendor Name</label><input type="text" id="vendor" placeholder="Optional" class="standard-field"></div>
+            <div class="form-group"><label>Account By</label><select id="account" required class="standard-field"></select></div>
+            <div class="form-group"><label for="amount">Amount (AED)</label><input type="number" id="amount" step="0.01" min="0" required class="standard-field"></div>
+            <div class="form-group"><label>Type</label>
+              <select id="transactionType" class="standard-field">
+                <option value="income">Income</option>
+                <option value="expense">Expense</option>
+              </select>
+            </div>
+            <div class="form-group" style="grid-column:1/-1;"><label>Description</label><input type="text" id="description" placeholder="Optional" class="standard-field"></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+            <button type="button" class="btn btn-ghost" onclick="resetForm()">Reset</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-list"></i> Transactions</div>
+        <div style="overflow:auto;">
+          <table id="transactionsTable">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Category</th>
+                <th>ID</th>
+                <th>Vendor</th>
+                <th>Account</th>
+                <th>Amount (AED)</th>
+                <th>Description</th>
+                <th>Type</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div style="margin-top:6px;font-size:12px;color:#6b7280;">
+          Note: Only the creator can edit/delete their entry for 10 minutes after creation. Admins can edit/delete anytime.
+        </div>
+      </div>
+    </section>
+
+    <!-- SETTINGS (ADMIN) -->
+    <section id="settingsSection" class="hidden">
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-gear"></i> Settings</div>
+
+        <!-- Categories -->
+        <div class="card" style="margin-top:10px;">
+          <div class="card-title"><i class="fa-solid fa-tags"></i> Categories</div>
+          <div class="form-row">
+            <div class="form-group"><label>New Category</label><input id="newCategory" placeholder="e.g. Fuel" class="standard-field"></div>
+            <div class="form-group" style="align-self:end;"><button class="btn btn-primary" onclick="addCategory()">Add</button></div>
+          </div>
+          <div id="categoryChips" class="chips"></div>
+        </div>
+
+        <!-- Accounts -->
+        <div class="card" style="margin-top:10px;">
+          <div class="card-title"><i class="fa-solid fa-wallet"></i> Accounts</div>
+          <div class="form-row">
+            <div class="form-group"><label>New Account</label><input id="newAccount" placeholder="e.g. Cash, Bank" class="standard-field"></div>
+            <div class="form-group" style="align-self:end;"><button class="btn btn-primary" onclick="addAccount()">Add</button></div>
+          </div>
+          <div id="accountChips" class="chips"></div>
+        </div>
+
+        <!-- Users -->
+        <div class="card" style="margin-top:10px;">
+          <div class="card-title"><i class="fa-solid fa-users-gear"></i> Users</div>
+          <div class="form-row">
+            <div class="form-group"><label>Username</label><input id="newUsername" class="standard-field"></div>
+            <div class="form-group"><label>Password</label><input id="newPassword" type="password" class="standard-field"></div>
+            <div class="form-group"><label>Role</label>
+              <select id="newRole" class="standard-field"><option value="user">User</option><option value="admin">Admin</option></select>
+            </div>
+            <div class="form-group" style="align-self:end;"><button class="btn btn-primary" onclick="addUser()">Add User</button></div>
+          </div>
+          <div style="overflow:auto;margin-top:8px;">
+            <table>
+              <thead><tr><th>Username</th><th>Role</th><th>Actions</th></tr></thead>
+              <tbody id="usersTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Data -->
+        <div class="card" style="margin-top:10px;">
+          <div class="card-title"><i class="fa-solid fa-database"></i> Data Management</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Import Excel (.xlsx)</label>
+              <input type="file" id="importExcel" accept=".xlsx" class="standard-field" />
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="btn btn-danger" onclick="deleteAllTransactions()"><i class="fa-solid fa-trash"></i> Delete All Transactions</button>
+            <button class="btn btn-secondary" onclick="backupAllData()"><i class="fa-solid fa-download"></i> Backup All Data</button>
+            <button class="btn btn-warning" onclick="document.getElementById('restoreFile').click()"><i class="fa-solid fa-upload"></i> Restore Data</button>
+            <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="restoreAllData(event)">
+          </div>
+          <div class="muted" style="margin-top:6px;font-size:12px;color:#6b7280;">Import is admin-only and respects your current Category/Account names.</div>
+        </div>
+
+      </div>
+    </section>
+  </div>
+</div>
+
+<footer>All rights reserved BY Qasim Aziz</footer>
+
+<script>
+// --- Simple API client with token ---
+const API = {
+  token: localStorage.getItem('token') || null,
+  setToken(t){ this.token = t; localStorage.setItem('token', t || ''); },
+  headers(){ return this.token ? { 'Content-Type':'application/json', Authorization: 'Bearer ' + this.token } : { 'Content-Type':'application/json' }; },
+  async get(url){ const r = await fetch(url, { headers: this.headers() }); if(!r.ok) throw new Error(await r.text()); return r.json(); },
+  async post(url, body){ const r = await fetch(url, { method:'POST', headers: this.headers(), body: JSON.stringify(body) }); if(!r.ok) throw new Error(await r.text()); return r.json(); },
+  async put(url, body){ const r = await fetch(url, { method:'PUT', headers: this.headers(), body: JSON.stringify(body) }); if(!r.ok) throw new Error(await r.text()); return r.json(); },
+  async del(url){ const r = await fetch(url, { method:'DELETE', headers: this.headers() }); if(!r.ok) throw new Error(await r.text()); return r.json(); },
+};
+
+let currentUser = null;
+let categories = [];
+let accounts = [];
+let transactions = [];
+let editId = null;
+
+async function login() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  try {
+    const res = await API.post('/api/auth/login', { username: u, password: p });
+    API.setToken(res.token);
+    currentUser = { username: res.username, role: res.role };
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    document.getElementById('menu').classList.remove('hidden');
+    document.getElementById('currentUser').textContent = currentUser.username;
+    document.getElementById('btnSettings').style.display = currentUser.role === 'admin' ? 'inline-block' : 'none';
+    await initUI();
+  } catch (e) {
+    alert('Invalid credentials');
+  }
+}
+function logout() {
+  API.setToken('');
+  currentUser = null;
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('menu').classList.add('hidden');
+}
+
+// Enter key for login and date max
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('loginPass').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') login();
+  });
+  const dateField = document.getElementById('date');
+  if (dateField) {
+    const today = new Date().toISOString().split('T')[0];
+    dateField.setAttribute('max', today);
+  }
+});
+
+function showSection(which) {
+  document.getElementById('dashboardSection').classList.add('hidden');
+  document.getElementById('transactionsSection').classList.add('hidden');
+  document.getElementById('settingsSection').classList.add('hidden');
+  ['btnDashboard','btnTransactions','btnSettings'].forEach(id=>document.getElementById(id).classList.remove('active'));
+
+  if (which === 'dashboard') { document.getElementById('dashboardSection').classList.remove('hidden'); document.getElementById('btnDashboard').classList.add('active'); }
+  if (which === 'transactions') { document.getElementById('transactionsSection').classList.remove('hidden'); document.getElementById('btnTransactions').classList.add('active'); }
+  if (which === 'settings') {
+    if (currentUser?.role !== 'admin') { alert('Settings are for admin only.'); return; }
+    document.getElementById('settingsSection').classList.remove('hidden'); document.getElementById('btnSettings').classList.add('active');
+  }
+}
+
+async function initUI() {
+  await loadSettingsUI();
+  await renderUsers();
+  await fetchAndRenderTransactions();
+  updateDashboard();
+  showSection('transactions');
+  const d = document.getElementById('date'); 
+  if (d) {
+    d.valueAsDate = new Date();
+    const today = new Date().toISOString().split('T')[0];
+    d.setAttribute('max', today);
+  }
+}
+
+// Settings
+async function loadSettingsUI() {
+  categories = await API.get('/api/categories');
+  accounts   = await API.get('/api/accounts');
+
+  const catSel = document.getElementById('category');
+  const accSel = document.getElementById('account');
+  const fCat = document.getElementById('filterCategory');
+  const fAcc = document.getElementById('filterAccount');
+
+  catSel.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
+  accSel.innerHTML = accounts.map(a => `<option value="${a}">${a}</option>`).join('');
+  fCat.innerHTML = `<option value="">All</option>` + categories.map(c => `<option value="${c}">${c}</option>`).join('');
+  fAcc.innerHTML = `<option value="">All</option>` + accounts.map(a => `<option value="${a}">${a}</option>`).join('');
+
+  const catWrap = document.getElementById('categoryChips'); catWrap.innerHTML = '';
+  categories.forEach((c, i) => {
+    const el = document.createElement('span'); el.className = 'chip';
+    el.innerHTML = `${c} 
+      <button title="Edit" onclick="renameCategory(${i})"><i class="fa-solid fa-pen"></i></button>
+      <button title="Delete" onclick="removeCategory(${i})"><i class="fa-solid fa-xmark"></i></button>`;
+    catWrap.appendChild(el);
+  });
+  const accWrap = document.getElementById('accountChips'); accWrap.innerHTML = '';
+  accounts.forEach((a, i) => {
+    const el = document.createElement('span'); el.className = 'chip';
+    el.innerHTML = `${a} 
+      <button title="Edit" onclick="renameAccount(${i})"><i class="fa-solid fa-pen"></i></button>
+      <button title="Delete" onclick="removeAccount(${i})"><i class="fa-solid fa-xmark"></i></button>`;
+    accWrap.appendChild(el);
+  });
+}
+async function addCategory() {
+  const val = document.getElementById('newCategory').value.trim();
+  if (!val) return;
+  try {
+    await API.post('/api/categories', { name: val });
+    document.getElementById('newCategory').value = '';
+    await loadSettingsUI();
+  } catch (e) { alert('Category exists or error'); }
+}
+async function renameCategory(i){
+  const cur = categories[i];
+  const nv = prompt('Rename category', cur);
+  if (!nv || nv===cur) return;
+  try { 
+    await API.put('/api/categories/' + encodeURIComponent(cur), { newName: nv });
+    await loadSettingsUI(); await fetchAndRenderTransactions(); updateDashboard();
+  } catch (e) { alert('Error renaming category'); }
+}
+async function removeCategory(i) {
+  if (!confirm('Remove this category? Existing transactions keep old name.')) return;
+  const cur = categories[i];
+  await API.del('/api/categories/' + encodeURIComponent(cur));
+  await loadSettingsUI();
+}
+async function addAccount() {
+  const val = document.getElementById('newAccount').value.trim();
+  if (!val) return;
+  try {
+    await API.post('/api/accounts', { name: val });
+    document.getElementById('newAccount').value = '';
+    await loadSettingsUI(); updateDashboard();
+  } catch (e) { alert('Account exists or error'); }
+}
+async function renameAccount(i){
+  const cur = accounts[i];
+  const nv = prompt('Rename account', cur);
+  if (!nv || nv===cur) return;
+  try {
+    await API.put('/api/accounts/' + encodeURIComponent(cur), { newName: nv });
+    await loadSettingsUI(); await fetchAndRenderTransactions(); updateDashboard();
+  } catch (e) { alert('Error renaming account'); }
+}
+async function removeAccount(i) {
+  if (!confirm('Remove this account? Existing transactions keep old name.')) return;
+  const cur = accounts[i];
+  await API.del('/api/accounts/' + encodeURIComponent(cur));
+  await loadSettingsUI(); updateDashboard();
+}
+
+// Users
+async function renderUsers() {
+  const tbody = document.getElementById('usersTableBody');
+  if (!tbody) return;
+  if (currentUser?.role !== 'admin') { tbody.innerHTML = ''; return; }
+  try {
+    const users = await API.get('/api/users');
+    tbody.innerHTML = '';
+    users.forEach((u, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${u.username}</td>
+        <td>${u.role}</td>
+        <td>
+          <button class="action-btn" title="Make Admin" onclick="makeAdmin('${u.username}')"><i class="fa-solid fa-user-shield"></i></button>
+          <button class="action-btn" title="Make User" onclick="makeUser('${u.username}')"><i class="fa-solid fa-user"></i></button>
+          <button class="action-btn" title="Reset Password" onclick="resetPassword('${u.username}')"><i class="fa-solid fa-key"></i></button>
+          <button class="action-btn" title="Delete" onclick="deleteUser('${u.username}')"><i class="fa-solid fa-trash"></i></button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+  } catch {}
+}
+async function addUser(){
+  if (currentUser?.role!=='admin') return alert('Admin only');
+  const username = document.getElementById('newUsername').value.trim();
+  const password = document.getElementById('newPassword').value;
+  const role = document.getElementById('newRole').value;
+  if (!username || !password) return alert('Enter username & password');
+  try {
+    await API.post('/api/users', { username, password, role });
+    document.getElementById('newUsername').value=''; document.getElementById('newPassword').value=''; document.getElementById('newRole').value='user';
+    await renderUsers();
+  } catch (e) { alert('Username exists or error'); }
+}
+async function makeAdmin(username){ await API.put('/api/users/'+encodeURIComponent(username)+'/role', { role:'admin' }); await renderUsers(); }
+async function makeUser(username){ await API.put('/api/users/'+encodeURIComponent(username)+'/role', { role:'user' }); await renderUsers(); }
+async function resetPassword(username){
+  const p = prompt('Enter new password'); if(!p) return;
+  await API.put('/api/users/'+encodeURIComponent(username)+'/password', { password: p }); alert('Password updated');
+}
+async function deleteUser(username){
+  await API.del('/api/users/'+encodeURIComponent(username)); await renderUsers();
+}
+
+// Transactions CRUD
+document.getElementById('transactionForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const t = {
+    date: document.getElementById('date').value,
+    category: document.getElementById('category').value,
+    reference: document.getElementById('transactionId').value,
+    vendor: document.getElementById('vendor').value,
+    account: document.getElementById('account').value,
+    amount: parseFloat(document.getElementById('amount').value || '0'),
+    description: document.getElementById('description').value,
+    type: document.getElementById('transactionType').value
+  };
+  if (!t.date || isNaN(t.amount)) return alert('Enter date and valid amount');
+
+  if (editId) {
+    await API.put('/api/transactions/'+editId, t);
+    editId = null;
+  } else {
+    await API.post('/api/transactions', t);
+  }
+  e.target.reset();
+  const dateField = document.getElementById('date');
+  if (dateField) {
+    dateField.valueAsDate = new Date();
+    const today = new Date().toISOString().split('T')[0];
+    dateField.setAttribute('max', today);
+  }
+  await fetchAndRenderTransactions();
+  updateDashboard();
+  showSection('transactions');
+});
+
+async function fetchAndRenderTransactions() {
+  transactions = await API.get('/api/transactions');
+  renderTransactions(transactions);
+}
+
+function canEditOrDelete(t){
+  if (currentUser?.role === 'admin') return true;
+  const isCreator = t.createdBy === currentUser?.username;
+  const within10m = (Date.now() - new Date(t.createdAt).getTime()) <= (10*60*1000);
+  return isCreator && within10m;
+}
+
+function renderTransactions(list = transactions){
+  const tbody = document.querySelector('#transactionsTable tbody');
+  tbody.innerHTML = '';
+  list.forEach(t => {
+    const tr = document.createElement('tr');
+    const canDo = canEditOrDelete(t);
+    tr.innerHTML = `
+      <td>${formatDateDisplay(t.date)}</td>
+      <td>${t.category}</td>
+      <td>${t.reference ?? ''}</td>
+      <td>${t.vendor ?? ''}</td>
+      <td>${t.account}</td>
+      <td>${formatAED(t.amount)}</td>
+      <td>${t.description ?? ''}</td>
+      <td class="${t.type === 'income' ? 'income' : 'expense'}">${t.type}</td>
+      <td>
+        ${canDo ? `
+          <button class="action-btn" title="Edit" onclick="editTransaction(${t.id})"><i class="fa-solid fa-pen-to-square"></i></button>
+          <button class="action-btn" title="Delete" onclick="deleteTransaction(${t.id})"><i class="fa-solid fa-trash"></i></button>
+        ` : ''}
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+async function editTransaction(id){
+  const t = transactions.find(x => x.id===id);
+  if (!t) return;
+  if (!canEditOrDelete(t)) return alert('Edit window expired (10 minutes) or not permitted.');
+  document.getElementById('date').value = t.date;
+  document.getElementById('category').value = t.category;
+  document.getElementById('transactionId').value = t.reference ?? '';
+  document.getElementById('vendor').value = t.vendor ?? '';
+  document.getElementById('account').value = t.account;
+  document.getElementById('amount').value = t.amount;
+  document.getElementById('description').value = t.description ?? '';
+  document.getElementById('transactionType').value = t.type;
+  editId = id;
+  showSection('transactions');
+}
+async function deleteTransaction(id){
+  const t = transactions.find(x=>x.id===id);
+  if (!t) return;
+  if (!canEditOrDelete(t)) return alert('Delete window expired (10 minutes) or not permitted.');
+  if (!confirm('Delete this transaction?')) return;
+  await API.del('/api/transactions/'+id);
+  await fetchAndRenderTransactions();
+  updateDashboard();
+}
+async function deleteAllTransactions(){
+  if (currentUser?.role !== 'admin') return alert('Admin only');
+  if (!transactions.length) { alert('No transactions to delete'); return; }
+  if (!confirm('Delete ALL transactions? This cannot be undone.')) return;
+  // brute-force: delete each
+  for (const t of transactions) { await API.del('/api/transactions/'+t.id); }
+  await fetchAndRenderTransactions();
+  updateDashboard();
+}
+function resetForm(){ 
+  document.getElementById('transactionForm').reset(); 
+  editId = null; 
+  const dateField = document.getElementById('date');
+  if (dateField) {
+    dateField.valueAsDate = new Date();
+    const today = new Date().toISOString().split('T')[0];
+    dateField.setAttribute('max', today);
+  }
+}
+
+// Dashboard + Today Summary
+function updateTodaySummary(source = transactions) {
+  const today = new Date().toISOString().split('T')[0];
+  const todayTransactions = source.filter(t => t.date === today);
+  const todaySummary = {};
+  accounts.forEach(a => todaySummary[a] = 0);
+  todayTransactions.forEach(t => {
+    const sign = t.type === 'income' ? 1 : -1;
+    if (!(t.account in todaySummary)) todaySummary[t.account] = 0;
+    todaySummary[t.account] += sign * (Number(t.amount) || 0);
+  });
+  const todayTotal = Object.values(todaySummary).reduce((a, b) => a + b, 0);
+  const wrap = document.getElementById('todaySummary');
+  wrap.innerHTML = '';
+  Object.keys(todaySummary).forEach(acc => {
+    const amount = todaySummary[acc];
+    const amountClass = amount < 0 ? 'today-negative-amount' : 'today-positive-amount';
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.flex = '1 1 200px';
+    card.innerHTML = `<div class="card-title"><i class="fa-solid fa-wallet"></i> ${acc}</div>
+      <div style="font-size:18px;font-weight:900;" class="${amountClass}">${formatAED(amount)}</div>`;
+    wrap.appendChild(card);
+  });
+  const totalCard = document.createElement('div');
+  totalCard.className = 'card';
+  totalCard.style.flex = '1 1 200px';
+  const totalClass = todayTotal < 0 ? 'today-negative-amount' : 'today-positive-amount';
+  totalCard.innerHTML = `<div class="card-title"><i class="fa-solid fa-calculator"></i> Today's Total</div>
+    <div style="font-size:20px;font-weight:900;" class="${totalClass}">${formatAED(todayTotal)}</div>`;
+  wrap.appendChild(totalCard);
+}
+function updateDashboard(source = transactions){
+  const summary = {};
+  accounts.forEach(a => summary[a]=0);
+  source.forEach(t=>{
+    const sign = t.type==='income' ? 1 : -1;
+    if (!(t.account in summary)) summary[t.account]=0;
+    summary[t.account] += sign * (Number(t.amount)||0);
+  });
+  const wrap = document.getElementById('dashboardSummary');
+  wrap.innerHTML = '';
+  Object.keys(summary).forEach(acc=>{
+    const amount = summary[acc];
+    const amountClass = amount < 0 ? 'negative-amount' : 'positive-amount';
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.flex = '1 1 200px';
+    card.innerHTML = `<div class="card-title"><i class="fa-solid fa-wallet"></i> ${acc}</div>
+      <div style="font-size:18px;font-weight:900;" class="${amountClass}">${formatAED(amount)}</div>`;
+    wrap.appendChild(card);
+  });
+  const total = Object.values(summary).reduce((a,b)=>a+b,0);
+  const totalCard = document.createElement('div');
+  totalCard.className = 'card';
+  totalCard.style.flex = '1 1 200px';
+  const totalClass = total < 0 ? 'negative-amount' : 'positive-amount';
+  totalCard.innerHTML = `<div class="card-title"><i class="fa-solid fa-calculator"></i> Total Balance</div>
+    <div style="font-size:20px;font-weight:900;" class="${totalClass}">${formatAED(total)}</div>`;
+  wrap.appendChild(totalCard);
+  updateTodaySummary(source);
+}
+
+// Filters
+function applyFilters(updateDashboardOnly = false) {
+  const start = document.getElementById('filterStart').value;
+  const end = document.getElementById('filterEnd').value;
+  const cat = document.getElementById('filterCategory').value;
+  const acc = document.getElementById('filterAccount').value;
+  const type = document.getElementById('filterType').value;
+
+  let filtered = [...transactions];
+  if (start) filtered = filtered.filter(t => t.date >= start);
+  if (end) filtered = filtered.filter(t => t.date <= end);
+  if (cat) filtered = filtered.filter(t => t.category === cat);
+  if (acc) filtered = filtered.filter(t => t.account === acc);
+  if (type) filtered = filtered.filter(t => t.type === type);
+
+  if (updateDashboardOnly) {
+    updateDashboard(filtered);
+  } else {
+    renderTransactions(filtered);
+  }
+}
+function clearFilters() {
+  document.getElementById('filterStart').value = '';
+  document.getElementById('filterEnd').value = '';
+  document.getElementById('filterCategory').value = '';
+  document.getElementById('filterAccount').value = '';
+  document.getElementById('filterType').value = '';
+  renderTransactions(transactions);
+  updateDashboard();
+}
+
+// Export
+function exportExcel() {
+  const start = document.getElementById('filterStart').value;
+  const end = document.getElementById('filterEnd').value;
+  const cat = document.getElementById('filterCategory').value;
+  const acc = document.getElementById('filterAccount').value;
+  const type = document.getElementById('filterType').value;
+
+  let filtered = [...transactions];
+  if (start) filtered = filtered.filter(t => t.date >= start);
+  if (end) filtered = filtered.filter(t => t.date <= end);
+  if (cat) filtered = filtered.filter(t => t.category === cat);
+  if (acc) filtered = filtered.filter(t => t.account === acc);
+  if (type) filtered = filtered.filter(t => t.type === type);
+
+  const data = filtered.map(t => ({
+    Date: formatDateForExport(t.date),
+    Category: t.category,
+    ID: t.reference || '',
+    Vendor: t.vendor || '',
+    Account: t.account,
+    Amount: t.amount,
+    Type: t.type,
+    Description: t.description || '',
+    'Created By': t.createdBy,
+    'Created At': formatDateTimeForExport(t.createdAt),
+    'Edited By': t.editedBy || '',
+    'Edited At': t.editedAt ? formatDateTimeForExport(t.editedAt) : ''
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Transactions');
+  XLSX.writeFile(wb, 'transactions.xlsx');
+}
+function exportPDF() {
+  const start = document.getElementById('filterStart').value;
+  const end = document.getElementById('filterEnd').value;
+  const cat = document.getElementById('filterCategory').value;
+  const acc = document.getElementById('filterAccount').value;
+  const type = document.getElementById('filterType').value;
+
+  let filtered = [...transactions];
+  if (start) filtered = filtered.filter(t => t.date >= start);
+  if (end) filtered = filtered.filter(t => t.date <= end);
+  if (cat) filtered = filtered.filter(t => t.category === cat);
+  if (acc) filtered = filtered.filter(t => t.account === acc);
+  if (type) filtered = filtered.filter(t => t.type === type);
+
+  const summary = {};
+  accounts.forEach(a => summary[a] = 0);
+  let totalIncome = 0;
+  let totalExpense = 0;
+  filtered.forEach(t => {
+    const sign = t.type === 'income' ? 1 : -1;
+    if (!(t.account in summary)) summary[t.account] = 0;
+    summary[t.account] += sign * (Number(t.amount) || 0);
+    if (t.type === 'income') totalIncome += Number(t.amount) || 0;
+    else totalExpense += Number(t.amount) || 0;
+  });
+  const total = Object.values(summary).reduce((a, b) => a + b, 0);
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(18); doc.text('Transactions Report', 14, 15);
+  doc.setFontSize(10);
+  let filterText = 'All Transactions';
+  if (start || end || cat || acc || type) {
+    filterText = 'Filtered: ';
+    const filters = [];
+    if (start && end) filters.push(`Date: ${formatDateForExport(start)} to ${formatDateForExport(end)}`);
+    else if (start) filters.push(`From: ${formatDateForExport(start)}`);
+    else if (end) filters.push(`To: ${formatDateForExport(end)}`);
+    if (cat) filters.push(`Category: ${cat}`);
+    if (acc) filters.push(`Account: ${acc}`);
+    if (type) filters.push(`Type: ${type}`);
+    filterText += filters.join(', ');
+  }
+  doc.text(filterText, 14, 22);
+  doc.setFontSize(11); doc.text('Summary:', 14, 32);
+  let yPos = 38;
+  Object.keys(summary).forEach(acc => {
+    const amount = summary[acc];
+    const amountText = formatAED(amount);
+    doc.text(`${acc}: ${amountText}`, 20, yPos);
+    yPos += 6;
+  });
+  doc.setFontSize(12); doc.setFont(undefined, 'bold');
+  doc.text(`Total Balance: ${formatAED(total)}`, 20, yPos + 2);
+  const rightSideX = 140;
+  doc.setFontSize(14); doc.setTextColor(0, 128, 0); doc.setFont(undefined, 'bold');
+  doc.text(`Total Income: ${formatAED(totalIncome)}`, rightSideX, 40);
+  doc.setTextColor(255, 0, 0);
+  doc.text(`Total Expense: ${formatAED(totalExpense)}`, rightSideX, 50);
+  doc.setTextColor(0, 0, 0);
+  const tableData = filtered.map(t => [
+    formatDateForExport(t.date), t.category, t.reference || '', t.vendor || '', t.account, formatAED(t.amount), t.type
+  ]);
+  doc.autoTable({
+    startY: yPos + 10,
+    head: [['Date', 'Category', 'ID', 'Vendor', 'Account', 'Amount', 'Type']],
+    body: tableData,
+    theme: 'grid',
+    headStyles: { fillColor: [11, 59, 109] },
+    styles: { fontSize: 9 },
+    columnStyles: {
+      0: { cellWidth: 20 }, 1: { cellWidth: 25 }, 2: { cellWidth: 20 },
+      3: { cellWidth: 25 }, 4: { cellWidth: 20, fontStyle: 'bold' },
+      5: { cellWidth: 25 }, 6: { cellWidth: 20, fontStyle: 'bold' }
+    },
+  });
+  const fileName = `transactions_${new Date().toISOString().slice(0, 10)}.pdf`;
+  doc.save(fileName);
+}
+
+// Backup/Restore
+async function backupAllData() {
+  if (currentUser?.role !== 'admin') return alert('Admin only');
+  const data = await API.get('/api/backup');
+  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `esthetics-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+async function restoreAllData(e) {
+  if (currentUser?.role !== 'admin') return alert('Admin only');
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (evt) => {
+    try {
+      const data = JSON.parse(evt.target.result);
+      await API.post('/api/restore', data);
+      alert('Data restored. Page will reload.');
+      location.reload();
+    } catch (err) { alert('Invalid backup file'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// Import Excel -> POST to backend as transactions
+document.getElementById('importExcel').addEventListener('change', function(e) {
+  if (currentUser?.role !== 'admin') return alert('Admin only');
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(evt) {
+    try {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const json = XLSX.utils.sheet_to_json(worksheet);
+
+      let imported = 0, skipped = 0;
+      for (const row of json) {
+        const date = row.Date || row.date;
+        const category = row.Category || row.category;
+        const reference = row.ID || row.id || row.Reference || row.reference || '';
+        const vendor = row.Vendor || row.vendor || '';
+        const account = row.Account || row.account;
+        const amount = row.Amount || row.amount;
+        const type = (row.Type || row.type || '').toLowerCase();
+        const description = row.Description || row.description || '';
+
+        if (!date || !category || !account || !amount || (type !== 'income' && type !== 'expense')) { skipped++; continue; }
+        // ensure category/account exists client-side lists
+        if (!categories.includes(category)) { try { await API.post('/api/categories', { name: category }); } catch {} categories.push(category); }
+        if (!accounts.includes(account)) { try { await API.post('/api/accounts', { name: account }); } catch {} accounts.push(account); }
+
+        const payload = { date: formatDateForStorage(date), category, reference, vendor, account, amount: parseFloat(amount), description, type };
+        try { await API.post('/api/transactions', payload); imported++; } catch { skipped++; }
+      }
+
+      alert(`Imported: ${imported}, Skipped: ${skipped}`);
+      await fetchAndRenderTransactions();
+      await loadSettingsUI();
+      updateDashboard();
+    } catch (err) { alert('Error importing Excel: ' + err.message); }
+  };
+  reader.readAsArrayBuffer(file);
+  e.target.value = '';
+});
+
+// Utilities
+function formatDateDisplay(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return isNaN(d) ? dateStr : d.toLocaleDateString('en-CA');
+}
+function formatDateForStorage(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return isNaN(d) ? dateStr : d.toISOString().split('T')[0];
+}
+function formatDateForExport(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
+}
+function formatDateTimeForExport(dateTimeStr) {
+  if (!dateTimeStr) return '';
+  const d = new Date(dateTimeStr);
+  if (isNaN(d)) return dateTimeStr;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${day}-${month}-${year} ${hours}:${minutes}`;
+}
+function formatAED(amount) {
+  return new Intl.NumberFormat('en-AE', { style: 'currency', currency: 'AED' }).format(amount);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  // If a token already exists, attempt auto-login UI
+  if (API.token) {
+    // We don't know the username/role until a call; try categories as a ping
+    API.get('/api/categories').then(() => {
+      // fake minimal state; user info will be filled after first login call in real flow
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      document.getElementById('menu').classList.remove('hidden');
+      // fetch whoami via transactions (requires auth); if fails, force logout
+      API.get('/api/transactions').then(async (ts) => {
+        // No direct whoami endpoint; keep minimal UX:
+        currentUser = currentUser || { username: 'You', role: 'user' };
+        document.getElementById('currentUser').textContent = currentUser.username;
+        document.getElementById('btnSettings').style.display = currentUser.role === 'admin' ? 'inline-block' : 'none';
+        await initUI();
+      }).catch(() => { logout(); });
+    }).catch(() => {});
+  }
+  // Show login by default
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('menu').classList.add('hidden');
+});
+</script>
+</body>
+</html>
